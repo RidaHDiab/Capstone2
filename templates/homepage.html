@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+
+</head>
+<body>
+<div id="chart_container"></div>
+<div id="chart_container_2"></div>
+<div id="chart_container_3"></div>
+
+<script>
+
+    function fetchMonthArticles() {
+        return fetch("http://localhost:5000/articles/month")
+            .then(response => response.json());
+    }
+
+
+    function fetchArticleSection() {
+        return fetch("http://localhost:5000/articles/section")
+            .then(response => response.json());
+    }
+
+    function fetchAvgWordCounts() {
+        return fetch("http://localhost:5000/articles/section/wordcount")
+            .then(response => response.json());
+    }
+
+
+    function MonthChart(data) {
+        const chartContainer = document.getElementById("chart_container");
+        Highcharts.chart(chartContainer, {
+            chart: {
+                type: 'bar'
+            },
+            title: {
+                text: 'Monthly Article Counts'
+            },
+            xAxis: {
+                categories: data.articles_per_month.map(item => item.month),
+                title: {
+                    text: 'Month'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Count'
+                }
+            },
+            series: [{
+                name: 'Count',
+                data: data.articles_per_month.map(item => item.count)
+            }]
+        });
+    }
+
+    function ArticleSectionCountChart(data) {
+        const chartContainer = document.getElementById("chart_container_2"); // Make sure the ID matches your HTML
+        Highcharts.chart(chartContainer, {
+            chart: {
+                type: 'bar'
+            },
+            title: {
+                text: 'Article Section Counts'
+            },
+            xAxis: {
+                categories: data.article_section_count.map(item => item.article_section),
+                title: {
+                    text: 'Article Section'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Count'
+                }
+            },
+            series: [{
+                name: 'Count',
+                data: data.article_section_count.map(item => item.count)
+            }]
+        });
+    }
+
+function renderPieChart(data) {
+    const chartContainer = document.getElementById("chart_container_3");
+    const seriesData = data.avg_word_count_by_section.map(item => ({
+        name: item.article_section || 'Unknown',
+        y: item.avg_word_count || 0
+    }));
+
+    Highcharts.chart(chartContainer, {
+        chart: {
+            plotBackgroundColor: null,
+            plotBorderWidth: null,
+            plotShadow: false,
+            type: 'pie'
+        },
+        title: {
+            text: 'Average Word Count by Section'
+        },
+        tooltip: {
+            pointFormat: '{series.name}: <b>{point.y:.2f} words</b>'
+        },
+        plotOptions: {
+            pie: {
+                allowPointSelect: true,
+                cursor: 'pointer',
+                dataLabels: {
+                    enabled: true,
+                    format: '<b>{point.name}</b>: {point.y:.2f} words',
+                    distance: -30, // Adjust the position of data labels
+                    color: 'white' // Set the color of data labels
+                }
+            }
+        },
+        series: [{
+            name: 'Sections',
+            colorByPoint: true,
+            data: seriesData
+        }]
+    });
+}
+
+    fetchAvgWordCounts().then(data => renderPieChart(data));
+
+    fetchMonthArticles().then(data => MonthChart(data));
+    fetchArticleSection().then(data => ArticleSectionCountChart(data))
+
+</script>
+
+</body>
+</html>
