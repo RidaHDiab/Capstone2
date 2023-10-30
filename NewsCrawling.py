@@ -4,10 +4,11 @@ import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from requests.exceptions import RequestException
+import xml.etree.ElementTree
 
 from Sitemap import Sitemap
 
-client = MongoClient("mongodb://localhost:27018")
+client = MongoClient("mongodb://localhost:27017")
 db = client["news"]
 collection = db["articles"]
 

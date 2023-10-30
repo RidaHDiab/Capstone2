@@ -1,7 +1,8 @@
 import urllib.request
 import urllib.error
 from bs4 import BeautifulSoup
-
+import lxml
+import xml
 
 class Sitemap:
     def get_sitemap(self, url):
@@ -12,14 +13,14 @@ class Sitemap:
             xml (string): XML source of scraped sitemap.
         """
         headers = {
-            'User-Agent': 'Your User-Agent String',  # Replace with your actual User-Agent
+            'User-Agent': 'facebook',  # Replace with your actual User-Agent
         }
         req = urllib.request.Request(url, headers=headers)
 
         try:
             response = urllib.request.urlopen(req)
             xml = BeautifulSoup(response,
-                                'lxml-xml',
+                                'lxml',
                                 from_encoding=response.info().get_param('charset'))
             return xml
         except urllib.error.HTTPError as e:
@@ -28,8 +29,10 @@ class Sitemap:
         except urllib.error.URLError as e:
             print(f"URL Error: {e.reason} for URL: {url}")
             return None
-        except Exception as e:
-            print(f"An error occurred while saving data to JSON: {e}")
+
+    """ except Exception as e:
+         print(f"An error occurred while saving data to JSON: {e}")
+"""
 
     def get_sitemap_type(self, xml):
         """Parse XML source and returns the type of sitemap.
