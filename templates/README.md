@@ -14,7 +14,7 @@
     Here the charts and analytics are present. 
 - #### Sitemap.py
     This class goes through the specified sitemap and gathers the links to the news articles.
-- 
+
 - #### NewsCrawling.py 
     goes through the articles links and gathers information about each article and saves the data in a database.
 ---
