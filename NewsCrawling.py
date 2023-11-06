@@ -1,11 +1,10 @@
 import json
-
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from requests.exceptions import RequestException
-import xml.etree.ElementTree
-
+import re
+import time
 from Sitemap import Sitemap
 
 client = MongoClient("mongodb://localhost:27017")
@@ -19,6 +18,7 @@ class DataExtractor:
         obj = DataExtractor()
         for sitemap_url in xml_sitemaps:
             response = requests.get(sitemap_url)
+
             if response.status_code == 200:
                 xml_content = response.text
                 soup = BeautifulSoup(xml_content, "xml")
@@ -44,6 +44,15 @@ class DataExtractor:
             response = requests.get(url, timeout=(connect_timeout, read_timeout))
             html_content = response.content
             soup = BeautifulSoup(html_content, "lxml")
+
+            # Extract the article body
+            article_body = soup.find("div", class_="article-content-wrap")
+
+            article_text = ""
+            for paragraph in article_body.find_all('p'):
+                article_text += paragraph.get_text()
+
+            print("article"+article_text +"end of article")
             # Find all script tags containing JSON-LD data
             script_tags = soup.find_all("script", type="application/ld+json")
 
@@ -51,7 +60,10 @@ class DataExtractor:
             if script_tags:
                 first_script_tag = script_tags[0]
                 json_ld_content = json.loads(first_script_tag.string)
-
+                print(json_ld_content)
+                typee = json_ld_content.get("@type", None)
+                if not typee == "Article":
+                    return
                 # Extract the desired data from the JSON-LD content
                 data = {
                     "site": json_ld_content.get("publisher", {}).get("url", None),
@@ -65,7 +77,9 @@ class DataExtractor:
                     'article_section': json_ld_content.get("articleSection", None),
                     'word_count': json_ld_content.get("wordCount", None),
                     'language': json_ld_content.get("inLanguage", None),
-                    'date_created': json_ld_content.get("dateCreated", None)
+                    'date_created': json_ld_content.get("dateCreated", None),
+                    'image': json_ld_content.get("thumbnailUrl", None),
+                    'article_body': article_text
                 }
                 collection.insert_one(data)
                 print(f'inserted: {data}')
@@ -76,46 +90,6 @@ class DataExtractor:
 
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-
-    def extract_jazeera(self, url):
-        print('start extraction from jazeera')
-        connect_timeout = 100  # seconds
-        read_timeout = 500  # seconds
-
-        try:
-            response = requests.get(url, timeout=(connect_timeout, read_timeout))
-            print(response)
-            html_content = response.content
-            soup = BeautifulSoup(html_content, "lxml")
-            # Find all script tags containing JSON-LD data
-            script_tags = soup.find_all("script", type="application/ld+json")
-
-            # Extract data from the first script tag
-            if script_tags:
-                first_script_tag = script_tags[0]
-                json_ld_content = json.loads(first_script_tag.string)
-
-                # Extract the desired data from the JSON-LD content
-                data = {
-                    "site": json_ld_content.get("name", ""),
-                    "url": json_ld_content.get("mainEntityOfPage", ""),
-                    "title": json_ld_content.get("headline", ""),
-                    "description": json_ld_content.get("description", ""),
-                    'author': json_ld_content.get("author", {}).get("name", ""),
-                    'published_time': json_ld_content.get("datePublished", ""),
-                    'modified_time': json_ld_content.get("dateModified", ""),
-                }
-                collection.insert_one(data)
-                print(f'inserted: {data}')
-            else:
-                print("JSON-LD script tag not found.")
-        except RequestException as e:
-            print(f"An error occurred during the request: {e} at this url : {url}")
-
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-
-
 def main():
     sitemap_extractor = Sitemap()
     data = DataExtractor()
