@@ -1,10 +1,11 @@
 import json
+import urllib.request
+
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from requests.exceptions import RequestException
-import re
-import time
+from PIL import Image
 from Sitemap import Sitemap
 
 client = MongoClient("mongodb://localhost:27017")
@@ -65,6 +66,7 @@ class DataExtractor:
                 if not typee == "Article":
                     return
                 # Extract the desired data from the JSON-LD content
+                #image_url = json_ld_content.get("thumbnailUrl", None)
                 data = {
                     "site": json_ld_content.get("publisher", {}).get("url", None),
                     "url": json_ld_content.get("url", None),
