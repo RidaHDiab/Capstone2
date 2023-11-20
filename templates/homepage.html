@@ -43,6 +43,12 @@
             <li class="nav-item">
                 <a class="nav-link" href="#">About</a>
             </li>
+            <li class="nav-item float-end">
+                <a class="nav-link" href="#">Login</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/signup">Sign Up</a>
+            </li>
         </ul>
     </div>
 </nav>
@@ -57,18 +63,18 @@
 
         <div class="carousel-inner content-center">
             <div class="carousel-item active">
-                <img class="d-block img-fluid img-thumbnail w-100"
-                     src="https://alpha-ar-media.almayadeen.net/media/image/2023/11/9/64a3adba-48df-4ffd-92a1-1c0d7d88992d.jpg"
+                <img  class="d-block img-fluid img-thumbnail w-100"
+                     src="{{ data[0]["image"] }}"
                      alt="First slide">
 
-                <div class="carousel-caption d-none d-md-block">
+                <div class="carousel-caption d-none d-md-block" style="background: linear-gradient(to top, rgba(204,204,204,1), rgba(204,204,204,0.05)); ">
                     <h5>{{ data[0]["title"] }}</h5>
                     <p>{{ data[0]["description"] }}</p>
                 </div>
             </div>
             <div class="carousel-item">
                 <img class="d-block img-fluid img-thumbnail w-100"
-                     src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrMAUZAsUudLSaGhhCO5pEChyK1BZzcDX_1BAbD5KhuT0_9jpfQwyh60fWwCk2G-DzBP8&usqp=CAU"
+                     src="{{ data[1]["image"] }}"
                      alt="Second slide">
                 <div class="carousel-caption d-none d-md-block">
                     <h3>{{ data[1]["title"] }}</h3>
@@ -78,7 +84,7 @@
             </div>
             <div class="carousel-item">
                 <img class="d-block img-fluid img-thumbnail w-100"
-                     src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrMAUZAsUudLSaGhhCO5pEChyK1BZzcDX_1BAbD5KhuT0_9jpfQwyh60fWwCk2G-DzBP8&usqp=CAU"
+                     src="{{ data[2]["image"] }}"
                      alt="Third slide">
                 <div class="carousel-caption d-none d-md-block">
                     <h5>{{ data[2]["title"] }}</h5>
@@ -102,7 +108,7 @@
         <div class="row">
             <div class="col-md-8">
                 <div class="card mb-4">
-                    <img src="{{ item["image"] }}" alt="image">
+                    <img src="{{ (item["image"] )}}" alt="image">
                     <div class="card-body">
                         <h5 class="card-title">{{ item["title"] }}</h5>
                         <p class="card-text">{{ item["description"] }}</p>

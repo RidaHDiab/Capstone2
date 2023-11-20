@@ -1,12 +1,18 @@
+import io
 import json
+import sys
+import time
 import urllib.request
 
 import requests
 from bs4 import BeautifulSoup
+from bson import ObjectId
 from pymongo import MongoClient
 from requests.exceptions import RequestException
 from PIL import Image
 from Sitemap import Sitemap
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
 client = MongoClient("mongodb://localhost:27017")
 db = client["news"]
@@ -53,7 +59,7 @@ class DataExtractor:
             for paragraph in article_body.find_all('p'):
                 article_text += paragraph.get_text()
 
-            print("article"+article_text +"end of article")
+            print("article" + article_text + "end of article")
             # Find all script tags containing JSON-LD data
             script_tags = soup.find_all("script", type="application/ld+json")
 
@@ -65,8 +71,7 @@ class DataExtractor:
                 typee = json_ld_content.get("@type", None)
                 if not typee == "Article":
                     return
-                # Extract the desired data from the JSON-LD content
-                #image_url = json_ld_content.get("thumbnailUrl", None)
+
                 data = {
                     "site": json_ld_content.get("publisher", {}).get("url", None),
                     "url": json_ld_content.get("url", None),
@@ -80,10 +85,17 @@ class DataExtractor:
                     'word_count': json_ld_content.get("wordCount", None),
                     'language': json_ld_content.get("inLanguage", None),
                     'date_created': json_ld_content.get("dateCreated", None),
-                    'image': json_ld_content.get("thumbnailUrl", None),
                     'article_body': article_text
                 }
-                collection.insert_one(data)
+
+                image_id = collection.insert_one(data).inserted_id
+                image_str = str(image_id)
+
+                response = requests.get(json_ld_content.get("thumbnailUrl", None))
+                if response.status_code == 200:
+                    with open(r"templates/"+image_str+".jpeg", "wb") as file:
+                        file.write(response.content)
+
                 print(f'inserted: {data}')
             else:
                 print("JSON-LD script tag not found.")
@@ -92,6 +104,8 @@ class DataExtractor:
 
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
+
+
 def main():
     sitemap_extractor = Sitemap()
     data = DataExtractor()
@@ -99,8 +113,6 @@ def main():
     sitemaps = sitemap_extractor.process_sitemap(sitemap_url)
     article_urls = data.extract_locs_from_sitemap(xml_sitemaps=sitemaps)
     print('finished and now extracting')
-    # for article in article_urls:
-    #     data.extract_jazeera(url=article)
 
     client.close()
 
