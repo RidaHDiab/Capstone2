@@ -1,34 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>Sign Up</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .error-message {
+            color: red;
+            font-size: 12px;
+        }
+    </style>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function validateForm() {
+            var password = document.getElementById("password").value;
+            var confirmPassword = document.getElementById("confirm-password").value;
+
+            // Clear previous error messages
+            var errorElements = document.getElementsByClassName("error-message");
+            for (var i = 0; i < errorElements.length; i++) {
+                errorElements[i].style.display = "none";
+            }
+
+            // Check if passwords match
+            if (password !== confirmPassword) {
+                var confirmPasswordError = document.getElementById("confirm-password-error");
+                confirmPasswordError.style.display = "block";
+                return false; // Prevent form submission
+            }
+
+            // Check password criteria
+            var passwordPattern = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+            if (!passwordPattern.test(password)) {
+                var passwordError = document.getElementById("password-error");
+                passwordError.style.display = "block";
+                return false; // Prevent form submission
+            }
+
+            return true; // Allow form submission
+        }
+    </script>
 </head>
 <body>
 
 <div class="container">
     <h2>Sign Up</h2>
-    <form>
+    <form action="/signup" method="POST" onsubmit="return validateForm()">
         <div class="form-group">
             <label for="name">Name</label>
-            <input type="text" class="form-control" id="name" placeholder="Enter your name">
+            <input type="text" class="form-control" name="name" id="name" placeholder="Enter your name">
         </div>
         <div class="form-group">
             <label for="email">Email address</label>
-            <input type="email" class="form-control" id="email" placeholder="Enter your email">
+            <input type="email" class="form-control" name="email" id="email" placeholder="Enter your email">
         </div>
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" class="form-control" id="password" placeholder="Enter your password">
+            <input type="password" class="form-control" name="password" id="password" placeholder="Enter your password">
+            <span id="password-error" class="error-message" style="display: none;">Password should contain at least 8 characters, including one uppercase letter, one lowercase letter, and one digit.</span>
         </div>
         <div class="form-group">
             <label for="confirm-password">Confirm Password</label>
-            <input type="password" class="form-control" id="confirm-password" placeholder="Confirm your password">
+            <input type="password" class="form-control" name="confirm-password" id="confirm-password" placeholder="Confirm your password">
+            <span id="confirm-password-error" class="error-message"
+                  style="display: none;">Passwords do not match.</span>
         </div>
         <button type="submit" class="btn btn-primary">Sign Up</button>
     </form>
 </div>
 
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
 </body>
 </html>
