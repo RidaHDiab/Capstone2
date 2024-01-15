@@ -1,8 +1,10 @@
+import time
 import urllib.request
 import urllib.error
 from bs4 import BeautifulSoup
 import lxml
 import xml
+
 
 class Sitemap:
     def get_sitemap(self, url):
@@ -74,10 +76,10 @@ class Sitemap:
     def process_sitemap(self, url):
         sitemap = self.get_sitemap(url)
         sitemap_type = self.get_sitemap_type(sitemap)
-
         if sitemap_type == 'sitemapindex':
             sitemaps = self.get_child_sitemaps(sitemap)
         else:
             sitemaps = [sitemap]
-
+        if "rt.com" in url:
+            sitemaps.reverse()
         return sitemaps

@@ -1,28 +1,24 @@
-import io
-import json
-import sys
 import time
-import urllib.request
-
+from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
-from bson import ObjectId
-from pymongo import MongoClient
+from flask import json
 from requests.exceptions import RequestException
-from PIL import Image
+from Compare import Compare
+from Search import Search
 from Sitemap import Sitemap
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from DatabaseConnection import Database
 
-client = MongoClient("mongodb://localhost:27017")
-db = client["news"]
-collection = db["articles"]
+db = Database()
 
 
 class DataExtractor:
+
     def extract_locs_from_sitemap(self, xml_sitemaps):
         locs = []
+
         obj = DataExtractor()
+
         for sitemap_url in xml_sitemaps:
             response = requests.get(sitemap_url)
 
@@ -35,25 +31,28 @@ class DataExtractor:
                     if loc_element:
                         locs.append(loc_element.get_text())
                         print(f'{loc_element.get_text()} grabbed')
-                        obj.extract_mayadeen(url=loc_element.get_text())
 
+                        if "aljazeera.com" in loc_element.get_text():
+                            if obj.extract_aljazeera(url=loc_element.get_text()) == "stop":
+                                break
             else:
-                print(f"Failed to fetch sitemap: {sitemap_url}")
+                print(f"Failed to fetch sitemap: {xml_sitemaps}")
+
         print(f'returned loc : {locs}')
         return locs
 
-    def extract_mayadeen(self, url):
-        print('start extraction from mayadeen')
+    def extract_aljazeera(self, url):
+        print('start extraction from aljazeera')
         connect_timeout = 100  # seconds
         read_timeout = 500  # seconds
-
+        search = Search()
         try:
             response = requests.get(url, timeout=(connect_timeout, read_timeout))
             html_content = response.content
             soup = BeautifulSoup(html_content, "lxml")
 
-            # Extract the article body
-            article_body = soup.find("div", class_="article-content-wrap")
+            # Extract the article body  wysiwyg wysiwyg--all-content css-1vkfgk0
+            article_body = soup.find("div", class_="wysiwyg wysiwyg--all-content css-ibbk12")
 
             article_text = ""
             for paragraph in article_body.find_all('p'):
@@ -69,34 +68,42 @@ class DataExtractor:
                 json_ld_content = json.loads(first_script_tag.string)
                 print(json_ld_content)
                 typee = json_ld_content.get("@type", None)
-                if not typee == "Article":
+                if not typee == "NewsArticle":
                     return
 
-                data = {
-                    "site": json_ld_content.get("publisher", {}).get("url", None),
-                    "url": json_ld_content.get("url", None),
-                    "title": json_ld_content.get("headline", None),
-                    "description": json_ld_content.get("description", None),
-                    'keywords': json_ld_content.get("keywords", None),
-                    'author': json_ld_content.get("author", {}).get("name", None),
-                    'published_time': json_ld_content.get("datePublished", None),
-                    'modified_time': json_ld_content.get("dateModified", None),
-                    'article_section': json_ld_content.get("articleSection", None),
-                    'word_count': json_ld_content.get("wordCount", None),
-                    'language': json_ld_content.get("inLanguage", None),
-                    'date_created': json_ld_content.get("dateCreated", None),
-                    'article_body': article_text
-                }
+                title = json_ld_content.get("headline", None)
+                CIE_query = f"select id from jaz_art where title = '{title}';"
+                db.init()
+                id = db.db_execute(CIE_query)
+                if not id is None:
+                    return
+                db.db_close()
+                description = json_ld_content.get("description", None)
+                keywords = soup.find('meta', {'name': 'keywords'}).get('content')
+                author = json_ld_content.get("author", {}).get("name", None)
+                published_time = datetime.strptime(json_ld_content.get("datePublished", None),
+                                                   '%Y-%m-%dT%H:%M:%SZ').date() if json_ld_content.get("datePublished",
+                                                                                                       None) else None
+                article_body = article_text
+                image_url = json_ld_content.get('image', [{}])[0].get('url', None)
 
-                image_id = collection.insert_one(data).inserted_id
-                image_str = str(image_id)
+                search.search_may(keywords)
+                search.search_BBC(keywords)
 
-                response = requests.get(json_ld_content.get("thumbnailUrl", None))
-                if response.status_code == 200:
-                    with open(r"templates/"+image_str+".jpeg", "wb") as file:
-                        file.write(response.content)
+                compare = Compare()
+                may_id, bbc_id = compare.initCompare(title, article_body, description, published_time)
+                if not may_id and bbc_id:
+                    return
+                if bbc_id is None:
+                    bbc_id = 99
+                if may_id is None:
+                    may_id = 99
+                insert_query = f"INSERT INTO {'jaz_art'} (title, description, body, keywords, author,publishedTime,image_url, id_may, id_bbc) VALUES ('{title}', '{description}', '{article_body}', '{keywords}', '{author}', '{published_time}','{image_url}',{may_id}, {bbc_id});"
 
-                print(f'inserted: {data}')
+                db.init()
+                db.db_execute(insert_query)
+                db.db_close()
+
             else:
                 print("JSON-LD script tag not found.")
         except RequestException as e:
@@ -105,17 +112,12 @@ class DataExtractor:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
+    @staticmethod
+    def start():
+        sitemap_extractor = Sitemap()
+        data = DataExtractor()
+        sitemaps_aljazera = sitemap_extractor.process_sitemap("https://www.aljazeera.com/sitemap.xml")
 
-def main():
-    sitemap_extractor = Sitemap()
-    data = DataExtractor()
-    sitemap_url = 'https://www.almayadeen.net/sitemaps/all.xml'
-    sitemaps = sitemap_extractor.process_sitemap(sitemap_url)
-    article_urls = data.extract_locs_from_sitemap(xml_sitemaps=sitemaps)
-    print('finished and now extracting')
+        data.extract_locs_from_sitemap(sitemaps_aljazera)
 
-    client.close()
-
-
-if __name__ == '__main__':
-    main()
+        print('finished and now extracting')
