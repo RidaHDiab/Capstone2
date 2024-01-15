@@ -104,6 +104,7 @@ def extract_BBC(url):
             print(json_ld_content)
 
             title = soup.find('header', class_="ssrcss-1eqcsb1-HeadingWrapper e1nh2i2l4").find('h1').get_text()
+            title = title.replace('\'', '$')
             CIE_query = f"select id from may_art where title = '{title}';"
             db.init()
             id = db.db_execute(CIE_query)
@@ -115,9 +116,8 @@ def extract_BBC(url):
             published_time = datetime.strptime(json_ld_content.get("datePublished", None), '%Y-%m-%dT%H:%M:%S.%fZ').date() if json_ld_content.get("datePublished", None) else None
             article_body = article_text
 
-            title = title.replace('\'', '"')
-            description = description.replace('\'', '"')
-            article_body = article_body.replace('\'', '"')
+            description = description.replace('\'', '$')
+            article_body = article_body.replace('\'', '$')
 
             insert_query = f"INSERT INTO {'bbc_art'} (title, description, body, keywords, author, publishedTime) OUTPUT INSERTED.id VALUES ('{title}','{description}', '{article_body}', '{keywords}', '{author}','{published_time}');"
 
@@ -164,7 +164,7 @@ def extract_mayadeen(url):
             print(json_ld_content)
 
             title = soup.find('div', class_="single-blog-wrapper").find('h1').get_text()
-            title = title.replace('\'', '"')
+            title = title.replace('\'', '$')
             CIE_query = f"select id from bbc_art where title = '{title}';"
             db.init()
             id = db.db_execute(CIE_query)
@@ -178,8 +178,8 @@ def extract_mayadeen(url):
 
 
 
-            description = description.replace('\'', '"')
-            article_body = article_body.replace('\'', '"')
+            description = description.replace('\'', '$')
+            article_body = article_body.replace('\'', '$')
 
 
             insert_query = f"INSERT INTO {'may_art'} (title, description, body, keywords, author, publishedTime) OUTPUT INSERTED.id VALUES ('{title}', '{description}', '{article_body}', '{keywords}', '{author}', '{published_time}');"

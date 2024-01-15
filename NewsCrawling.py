@@ -72,6 +72,7 @@ class DataExtractor:
                     return
 
                 title = json_ld_content.get("headline", None)
+                title = title.replace('\'', '$')
                 CIE_query = f"select id from jaz_art where title = '{title}';"
                 db.init()
                 id = db.db_execute(CIE_query)
@@ -86,6 +87,8 @@ class DataExtractor:
                                                                                                        None) else None
                 article_body = article_text
                 image_url = json_ld_content.get('image', [{}])[0].get('url', None)
+                description = description.replace('\'', '$')
+                article_body = article_body.replace('\'', '$')
 
                 search.search_may(keywords)
                 search.search_BBC(keywords)
