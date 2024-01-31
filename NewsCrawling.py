@@ -90,7 +90,7 @@ class DataExtractor:
                 description = description.replace('\'', '$')
                 article_body = article_body.replace('\'', '$')
 
-                search.search_may(keywords)
+                #search.search_may(keywords)
                 search.search_BBC(keywords)
 
                 compare = Compare()

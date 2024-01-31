@@ -1,3 +1,4 @@
+import string
 from datetime import timedelta
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -24,6 +25,9 @@ class Compare:
     @staticmethod
     def compareTtfid(text1, text2):
         print("TEXT1", text1, "\n", "TEXT2:", text2)
+        text1 = text1.translate(str.maketrans("", "", string.punctuation)).lower()
+        text2 = text2.translate(str.maketrans("", "", string.punctuation)).lower()
+
         tfidf_vectorizer = TfidfVectorizer()
         tfidf_matrix = tfidf_vectorizer.fit_transform([text1, text2])
         cosine_sim = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1])

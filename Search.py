@@ -1,15 +1,12 @@
+import re
+import time
 from datetime import datetime
 import json
 from dateutil import parser
 from urllib.error import HTTPError
-
-import pyodbc
 import requests
 from bs4 import BeautifulSoup
-from googlesearch import search
 from requests import RequestException
-
-from Compare import Compare
 
 from DatabaseConnection import Database
 
@@ -33,9 +30,39 @@ def generate_google_dork_query(site, keywords):
     return google_dork_query
 
 
+def extract_urls(url):
+    try:
+        response = requests.get(url)
+        html = response.content
+
+        soup = BeautifulSoup(html, 'html.parser')
+        media_grids = soup.find_all('div', class_='grid-item')
+        a_tags = [a_tag for media_grid in media_grids for a_tag in media_grid.find_all('a')]
+        url_list = [a_tag.get('href') for a_tag in a_tags]
+        article_links = [link for link in url_list if link.startswith('/news/')]
+        base = 'https://english.almayadeen.net'
+        formatted_urls = [base + link for link in article_links]
+        return list(set(formatted_urls))
+    except Exception as e:
+        print(e)
+
+
+def extract_urls_bbc(url):
+    response = requests.get(url)
+    html = response.content
+    soup = BeautifulSoup(html, 'html')
+    a_tags = soup.find_all('a')
+    urls_list = [a_tag.get('href') for a_tag in a_tags]
+    pattern = r'.*world-\w+-\d+$'
+    urls = [url for url in urls_list if re.match(pattern, url)]
+    base = 'https://www.bbc.com'
+    return [base + link for link in urls]
+
+
 class Search:
 
     def search_may(self, keywords):
+        global locations
         print(keywords)
         query = generate_google_dork_query("almayadeen.net", keywords)
         params = {'q': query, 'key': api_key, 'cx': cx}
@@ -46,7 +73,7 @@ class Search:
 
             titles = [item.get('title', '') for item in results.get('items', [])]
             urls = [item['link'] for item in results.get('items', [])]
-
+            locations = {'asia', 'europe', 'asia-pacific', 'latin-america', 'mena', 'palestine', 'us', 'canada'}
             print(results)
         except HTTPError as e:
             print(e)
@@ -54,7 +81,11 @@ class Search:
             return
         for url in urls:
             if "/news/" in url:
-                extract_mayadeen(url)
+                location_in_url = url.rsplit('/', 1)[-1].lower()
+                if location_in_url in locations:
+                    urls.append(extract_urls(url))
+                else:
+                    extract_mayadeen(url)
 
     def search_BBC(self, keywords):
         print(keywords)
@@ -67,16 +98,19 @@ class Search:
 
             titles = [item.get('title', '') for item in results.get('items', [])]
             urls = [item['link'] for item in results.get('items', [])]
+
         except HTTPError as e:
             print(e)
         if not titles:
             return
         for url in urls:
+            if '/world/' or '/us-canada' in url:
+                urls.append(extract_urls_bbc(url))
             if "/news/" in url:
                 extract_BBC(url)
 
-def extract_BBC(url):
 
+def extract_BBC(url):
     print('start extraction from BBC')
     connect_timeout = 100  # seconds
     read_timeout = 500  # seconds
@@ -108,12 +142,14 @@ def extract_BBC(url):
             CIE_query = f"select id from may_art where title = '{title}';"
             db.init()
             id = db.db_execute(CIE_query)
-            if not id is None:
+            if id is not None:
                 return
             description = soup.find('meta', {'name': 'description', 'data-rh': 'true'}).get('content')
             keywords = json_ld_content.get("keywords", None)
             author = json_ld_content.get("author", {}).get("name", None)
-            published_time = datetime.strptime(json_ld_content.get("datePublished", None), '%Y-%m-%dT%H:%M:%S.%fZ').date() if json_ld_content.get("datePublished", None) else None
+            published_time = datetime.strptime(json_ld_content.get("datePublished", None),
+                                               '%Y-%m-%dT%H:%M:%S.%fZ').date() if json_ld_content.get("datePublished",
+                                                                                                      None) else None
             article_body = article_text
 
             description = description.replace('\'', '$')
@@ -168,22 +204,20 @@ def extract_mayadeen(url):
             CIE_query = f"select id from bbc_art where title = '{title}';"
             db.init()
             id = db.db_execute(CIE_query)
-            if not id is None:
+            if id is not None:
                 return
             description = soup.find('div', class_="single-blog-wrapper").find('p', class_='p-summary').get_text()
             keywords = json_ld_content.get("keywords", None)
             author = json_ld_content.get("author", {}).get("name", None)
-            published_time = parser.parse(json_ld_content.get("datePublished", None)).date() if json_ld_content.get("datePublished", None) else None
+            published_time = parser.parse(json_ld_content.get("datePublished", None)).date() if json_ld_content.get(
+                "datePublished", None) else None
             article_body = article_text
-
-
 
             description = description.replace('\'', '$')
             article_body = article_body.replace('\'', '$')
 
-
             insert_query = f"INSERT INTO {'may_art'} (title, description, body, keywords, author, publishedTime) OUTPUT INSERTED.id VALUES ('{title}', '{description}', '{article_body}', '{keywords}', '{author}', '{published_time}');"
-            #values = (title, description, article_body, keywords, author, published_time)
+            # values = (title, description, article_body, keywords, author, published_time)
 
             db.init()
             try:
